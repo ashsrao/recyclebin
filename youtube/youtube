@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Start youtube in another profile. 
+# Install the ublock ad block on this profile. 
+/usr/bin/firefox -p youtube https://www.youtube.com
+
