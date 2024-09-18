@@ -1,9 +1,0 @@
-#!/bin/sh
-
-# source http://www.rayjuang.com/2016/05/setting-up-ugee-1910b-tablet-display-in.html
-DISPLAY_ID=`xrandr | grep " connected 1440" | cut -f1 -d" " | tr "\n" " "`
-PEN_ID=`xinput_calibrator --list | grep "UC-Logic 19" | grep "Pen" | cut -f2 -d"="`
-
-echo ${DISPLAY_ID} ${PEN_ID}
-
-xinput map-to-output ${PEN_ID} ${DISPLAY_ID}
