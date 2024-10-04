@@ -1,0 +1,114 @@
+#!/bin/bash
+
+#CONTAINER_NAME="langtool"
+#if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+#    echo "Stopping the container: ${CONTAINER_NAME}"
+#    docker stop ${CONTAINER_NAME}
+#else
+#    echo "Container $CONTAINER_NAME is not running."
+#fi
+
+#docker run -d --name ${CONTAINER_NAME} --rm -p 8081:8010 silviof/docker-languagetool
+
+
+CONTAINER_NAME="langtool"                # container name
+IMAGE_NAME="silviof/docker-languagetool" # Docker image name
+
+is_running() {
+    # Check if the container is running
+    if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+        return 0  # Container is running
+    else
+        return 1  # Container is not running
+    fi
+}
+
+container_exists() {
+    # Check if the container exists (running or stopped)
+    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+        return 0  # Container exists
+    fi
+    return 1  # Container does not exist
+}
+
+remove_container() {
+    if container_exists; then
+        echo "Removing ${CONTAINER_NAME}..."
+        docker rm "${CONTAINER_NAME}" || {echo "Failed to remove ${CONTAINER_NAME}." ; return 1}
+    else
+        echo "${CONTAINER_NAME} does not exist now."
+    fi
+    return 0
+}
+
+sample_check() {
+   curl -X POST http://localhost:8081/v2/check \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "text=sepll+mistuke" \
+        -d "language=en-US"
+}
+
+start() {
+    if is_running ; then
+        echo "${CONTAINER_NAME} is already running."
+        exit 1
+    fi
+    echo "Starting ${CONTAINER_NAME}"
+    docker run -d --name "${CONTAINER_NAME}" --rm -p 8081:8010 "$IMAGE_NAME"  # Start the container in detached mode
+    echo "${CONTAINER_NAME} started."
+    curl http://localhost:8081
+}
+
+stop() {
+    if ! is_running; then
+        echo "$CONTAINER_NAME is not running."
+        exit 1
+    fi
+    echo "Stopping $CONTAINER_NAME..."
+    docker stop "$CONTAINER_NAME"  # Stop the container
+    if remove_container; then
+        echo "${CONTAINER_NAME} stopped and removed."
+    else
+        echo "$CONTAINER_NAME stopped but could not be removed."
+    fi
+}
+
+status() {
+    if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
+        echo "$CONTAINER_NAME is running on localhost:8081 "
+	sample_check
+    else
+        echo "$CONTAINER_NAME is not running."
+    fi
+}
+
+show_help() {
+    echo "Usage: $0 {start|stop|status|restart}"
+    echo ""
+    echo "Commands:"
+    echo "  start   Start ${CONTAINER_NAME} container"
+    echo "  stop    Stop ${CONTAINER_NAME} and remove the container."
+    echo "  status  Check the status of the ${CONTAINER_NAME} container."
+    echo "  restart Stop and Start the ${CONTAINER_NAME} container"
+    echo ""
+}
+
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+	start
+	stop
+	;;
+    *)
+        show_help
+        exit 1
+esac
