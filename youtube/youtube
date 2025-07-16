@@ -2,5 +2,6 @@
 
 # Start youtube in another profile. 
 # Install the ublock ad block on this profile. 
-/usr/bin/firefox -p youtube https://www.youtube.com
+
+nohup /usr/bin/firefox -p youtube https://www.youtube.com  > /dev/null 2>&1  &
 
