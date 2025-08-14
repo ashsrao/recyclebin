@@ -1,0 +1,100 @@
+#!/bin/sh
+
+# In the Konkani language Utta is a command to wake up. 
+
+# This objective of this program is to wake up a server machine when there is an arp packet sent by any host in the network (other than the router) to resolve the MAC address of the server
+# After sending the wakeonlan, we inform hurricane electric our dns resolver, that we have might have a new public IP address
+# We skip the router to avoid requests made by bots. The service is used only when devices in the local network query for the server. 
+
+
+# This program needs the following inputs in the configuration file
+# interface=<interface name on host machine on which tcpdump sniffs the arp packets>
+# ip_address=<IP address of the server machine>
+# mac_addresses=<comma seperated list of mac addresses of the server machine>"
+# he_url="<url of hurricane electric to refresh the IP address for the domain name>"
+# busy_time="<time to sleep in seconds before looping again>"
+# router_ip_address="<ip address of router>". We filter requests by the router because of bots that may be requesting for the server.
+# NOTE THAT THE IP and MAC addresses are not validated. 
+
+# Import the variables required.
+
+config_file="${PWD}/utta.config"
+
+if [ -f ${config_file} ]
+then
+    . ${config_file}
+    echo "Config file found"
+else
+    echo "${config_file} not found"
+    exit 1
+fi       
+
+
+
+# Binaries used by this script
+tcpdump="/usr/bin/tcpdump"
+ipcalc="/usr/bin/ipcalc"
+wakeonlan="/usr/bin/wakeonlan"
+curl="/usr/bin/curl"
+
+# Exit on error
+# set -e
+
+execute_command() {
+    cmd="$1"
+    echo "Executing command: ${cmd}"
+    eval "${cmd}" > /dev/null 2>&1
+    if [ $? -ne 0 ]
+    then
+        echo "Error"
+        return 1
+    fi
+    echo "${cmd} Success"
+    return 0
+
+}
+
+# Initially this was for arp packet, but then any L2 packet (most likely arp) that has host IP in it and is broadcast in the network should be ok.   
+wait_for_arp_packet() {
+    cmd="${tcpdump} -i ${interface} -n host ${ip_address} and not host ${router_ip_address} -c 1"
+    execute_command "${cmd}"
+    if [ $? -ne 0 ]
+    then
+        exit 1
+    fi
+}
+
+send_wakeonlan() {
+    echo "$mac_addresses" | sed 's/ *, */\n/g' | while read device_mac; do
+        # Wake the mac address in the list.
+        echo "Waking up ${device_mac}"
+        cmd="${wakeonlan} ${device_mac}"
+        execute_command "${cmd}"
+        if [ $? -ne 0 ]
+        then
+            exit 1
+        fi
+    done
+}
+
+update_dnsentry() {
+    cmd="${curl} --retry 3 --retry-delay 5 -s -4 ${he_url}"
+    execute_command "${cmd}"
+    if [ $? -ne  0 ]
+    then
+         exit 1
+    fi
+}
+
+
+while true
+do
+    wait_for_arp_packet
+    # send_wakeonlan
+    update_dnsentry
+    date
+    echo "Sleeping now for ${busy_time}"
+    sleep ${busy_time}
+    date
+    echo "Starting cycle again"
+done

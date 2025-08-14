@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# Install this on /usr/local/etc/rc.d/ folder
+# Change the permissions to +x. 
+
+# Kumbhakarna startup script
+#
+# PROVIDE: kumbhakarna
+# REQUIRE: DAEMON
+# KEYWORD: shutdown
+
+# Add the following to /etc/rc.conf[.local] to enable this service
+#
+# kumbhakarna_enable (bool):        Set to "NO" by default.
+#                                   Set to "YES" to enable kumbhakarna.
+
+. /etc/rc.subr
+
+name=kumbhakarna
+rcvar=${name}_enable
+
+: ${kumbhakarna_enable:="NO"}
+
+command="/usr/local/bin/${name}"
+start_cmd="kumbhakarna_start"
+stop_cmd="kumbhakarna_stop"
+status_cmd="kumbhakarna_status"
+restart_cmd="kumbhakarna_stop && kumbhakarna_start"
+pidfile="/var/run/${name}.pid"
+logfile="/var/log/${name}.log"
+
+kumbhakarna_start()
+{
+    if [ -f ${logfile} ] && [ $(stat -f %z "${logfile}") -gt 4194304 ]; then
+        # Rotate the logfile
+        mv ${logfile} ${logfile}.1
+        # Optionally compress the old logfile
+        gzip ${logfile}.1
+    fi
+
+    ${command} >> ${logfile} 2>&1 &
+    echo $! > ${pidfile}
+}
+
+kumbhakarna_stop()
+{
+    if [ -f ${pidfile} ]
+    then 
+        kill $(cat ${pidfile})
+        rm -f ${pidfile}
+    else
+        echo "Service was previously stopped"
+    fi 
+}
+
+kumbhakarna_status()
+{
+    if [ -f ${pidfile} ]; then
+        if kill -0 $(cat ${pidfile}) 2>/dev/null; then
+            echo "${name} is running with PID $(cat ${pidfile})."
+        else
+            echo "${name} is not running, but PID file exists."
+        fi
+    else
+        echo "${name} is not running."
+    fi
+}
+
+load_rc_config ${name}
+run_rc_command "$1"

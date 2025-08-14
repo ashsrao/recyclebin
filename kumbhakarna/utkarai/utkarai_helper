@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# This program needs the following inputs in the configuration file
+# mac_addresses=<comma seperated list of mac addresses of the server machine>"
+# he_url="<url of hurricane electric to refresh the IP address for the domain name>"
+
+# Import the variables required.
+
+config_file="/opt/utkarai/utkarai.config"
+
+if [ -f ${config_file} ]
+then
+    . ${config_file}
+    echo "Config file found"
+else
+    echo "${config_file} not found"
+    exit 1
+fi
+
+# Binaries used by this script
+wakeonlan="/usr/bin/wakeonlan"
+curl="/usr/bin/curl"
+
+send_wakeonlan
+update_dnsentry

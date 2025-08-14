@@ -1,0 +1,14 @@
+[Unit]
+Description=Utkarai
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python /opt/utkarai/utkarai.py
+WorkingDirectory=/opt/utkarai/
+StandardOutput=journal
+StandardError=journal
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+Alias=utkarai.service

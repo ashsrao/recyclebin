@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# Kumbhakarna periodically checks if there is work being done. 
+# If idle for a long period of time, then kumbharkarna shuts down the machine.
+
+idle_duration=600
+# We shutdown the system when the system has been idle for the above duration of time. 
+sleep_time=600
+# If the system was not idle, we assume it is busy for some time, and we check again after the above sleep time. 
+
+# Example iostat output on freebsd
+#tty             nda0             ada0             ada1             cpu
+# tin  tout KB/t   tps  MB/s KB/t   tps  MB/s KB/t   tps  MB/s  us ni sy in id
+#   0     6 27.0     9  0.25 13.4    12  0.16 13.4    12  0.16   1  0  0  0 98
+# The last value is the idle%, or the % of time the cpu was idle
+idle_percentage=95
+# We consider the system to be active if the idle% is less than the above value
+# So in this case if the system is idle for 94% of the time, we consider the system to be active. 
+
+
+# Binaries used by this program.
+iostat="/usr/sbin/iostat"
+iostat_args="-w 1 -c ${idle_duration} -I"
+logger="/usr/bin/logger"
+
+date
+logger "Kumbhakarna is waking up"
+
+echo "Checking if the system is idle for ${idle_duration} seconds"
+while [ 1 ] ;
+do
+  # this will exit with 1 if awk sees a value < 95 in the last column  
+  ${iostat} ${iostat_args} | awk 'NR>3 {if ($NF < 95 ) { print $NF ; exit 1}}'
+  if [ $? -ne 0 ] 
+  then
+     date
+     echo "Was not idle for the ${idle_duration} seconds."
+     echo "System might be busy now."
+     echo "Therefore sleeping for ${sleep_time} seconds before checking for CPU utilization."
+     sleep ${sleep_time} 
+     date
+     echo "Done sleeping."
+     echo "Now checking if the system is idle for ${idle_duration} seconds"	
+  else
+     break
+  fi
+done     
+
+date
+logger "The system was idle for at least ${idle_duration} seconds." 
+logger "Kumbhakarna is powering off"
+poweroff
