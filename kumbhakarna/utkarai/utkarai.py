@@ -10,9 +10,33 @@ cert_file="/opt/utkarai/utkarai_cert.pem"
 key_file="/opt/utkarai/utkarai_key.pem"
 script_path="/opt/utkarai/utkarai_helper"
 
+ip_address_list = ["192.168.8.10", "192.168.8.11", "192.168.8.12"]
+
 # Define the request handler
 class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
+    def ping(self, ip):
+    # Determine the command based on the operating system
+        command = ['ping', '-c', '1', ip]
+
+        try:
+            # Execute the ping command
+            output = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Check the return code to determine if the machine is up or down
+            if output.returncode == 0:
+                return True  # Machine is up
+            else:
+                return False  # Machine is down
+        except Exception as e:
+            print(f"Error pinging {ip}: {e}")
+        return False  # Assume down if there's an error
+
+    def check_machines(self, ip_list):
+        status = {}
+        for ip in ip_list:
+            status[ip] = self.ping(ip)
+        return status
+    
     def do_redirect(self):
         client_ip = self.client_address[0]
         # Redirect to the client's IP address
@@ -26,10 +50,20 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
+            
+            machine_status = self.check_machines(ip_address_list)
+
+            # Generate HTML content with IP status
+            status_html = ''.join(
+                f"<p>Server is {'up' if is_up else 'down'}.</p>"
+                for ip, is_up in machine_status.items()
+            )
             self.wfile.write(b"""
                 <html>
                 <body>
-                    <h1>Press the Button</h1>
+                    <h2>Machine Status</h2>
+                    """ + status_html.encode() +  b"""
+                    <h1>Do you still want to press the button </h1>
                     <form action="/execute" method="post">
                         <button type="submit">Execute Script</button>
                     </form>
