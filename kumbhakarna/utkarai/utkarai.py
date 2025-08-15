@@ -4,6 +4,7 @@ import http.server
 import ssl
 import subprocess
 import os
+from datetime import datetime
 
 
 cert_file="/opt/utkarai/utkarai_cert.pem"
@@ -17,7 +18,7 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def ping(self, ip):
     # Determine the command based on the operating system
-        command = ['ping', '-c', '1', ip]
+        command = ['ping', '-c', '1', '-W', '1', ip]
 
         try:
             # Execute the ping command
@@ -41,12 +42,15 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         client_ip = self.client_address[0]
         # Redirect to the client's IP address
         self.send_response(302)
-        self.send_header("Location", f"http://{client_ip}")
+        self.send_header("Location", f"http://dns.google")
         self.end_headers()
 
 
     def do_GET(self):
-        if self.path == '/button':
+
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        if self.path ==  f'/{current_date}':
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
