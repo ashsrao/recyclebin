@@ -1,0 +1,19 @@
+#!/bin/sh
+
+config_file="/opt/utkarai/utkarai.config"
+log_file="/tmp/utkarai_cron.log"
+
+if [ -f ${config_file} ]
+then
+    . ${config_file}
+    echo "Config file found" >> ${log_file} 2>&1
+else
+    echo "${config_file} not found" >> ${log_file} 2>&1
+    exit 1
+fi
+
+curl="/usr/bin/curl"
+
+update_dnsentry >> ${log_file} 2>&1
+
+
